@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["pitanga*"]
+exclude = ["docs*", "tests*", "lab*"]
+
+[project]
+name = "pitanga"
+dynamic = ["version"]
+authors = [
+    { name="Joab Leite", email="leitejoab@gmail.com" },
+]
+description = "Tools for Database Operations in Python"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["Database", "Postgress"]
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "pitanga.__version__"}
+
+[project.urls]
+"Homepage" = "https://github.com/cereja-project/pitanga"
+"Bug Tracker" = "https://github.com/cereja-project/pitanga/issues/new/choose"
+
+
