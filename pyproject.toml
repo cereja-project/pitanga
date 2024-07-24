@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "cereja"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -11,7 +11,7 @@ exclude = ["docs*", "tests*", "lab*"]
 
 [project]
 name = "pitanga"
-dynamic = ["version"]
+dynamic = ["version", "dependencies"]
 authors = [
     { name="Joab Leite", email="leitejoab@gmail.com" },
 ]
@@ -35,6 +35,7 @@ classifiers = [
 
 [tool.setuptools.dynamic]
 version = {attr = "pitanga.__version__"}
+dependencies = {file = ["requirements.txt"]}
 
 [project.urls]
 "Homepage" = "https://github.com/cereja-project/pitanga"
