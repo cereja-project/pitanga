@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "cereja"]
+requires = ["setuptools>=61.0", "cereja", "psycopg2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
