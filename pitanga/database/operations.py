@@ -61,7 +61,7 @@ class DatabaseConnection:
 
     def close_all(self):
         """Fecha todas as conexões no pool de conexões."""
-        if self._pool:
+        if self._pool and not self._pool.closed:
             self._pool.closeall()
 
 
