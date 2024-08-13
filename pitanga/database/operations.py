@@ -61,8 +61,71 @@ class DatabaseConnection:
 
     def close_all(self):
         """Fecha todas as conexões no pool de conexões."""
-        if self._pool:
+        if self._pool and not self._pool.closed:
             self._pool.closeall()
+
+
+class QueryResult:
+    def __init__(self, result, col_names):
+        self._result = result
+        self._columns = col_names
+
+    @property
+    def columns(self):
+        return self._columns
+
+    def __getitem__(self, item: str | int):
+        """
+        Retorna uma coluna específica do resultado da consulta.
+        """
+        if isinstance(item, int):
+            return self._result[item]
+        if item in self._columns:
+            index = self._columns.index(item)
+            return [row[index] for row in self._result]
+        raise KeyError(f"Coluna '{item}' não encontrada.")
+
+    def __getattr__(self, item):
+        """
+        Retorna uma coluna específica do resultado da consulta.
+        """
+        if item in self._columns:
+            return self.__getitem__(item)
+        raise AttributeError(f"Coluna '{item}' não encontrada.")
+
+    def __iter__(self):
+        """
+        Retorna um iterador para os resultados da consulta.
+        """
+        return iter(map(lambda row: dict(zip(self._columns, row)), self._result))
+
+    def __len__(self):
+        return len(self._result)
+
+    def to_csv(self, filepath):
+        """
+        Exporta o resultado da consulta para um arquivo CSV
+        param filepath: Caminho do arquivo CSV
+        """
+        with open(filepath, "w") as file:
+            file.write(",".join(self._columns) + "\n")
+            for row in self._result:
+                file.write(",".join(map(str, row)) + "\n")
+
+    def to_json(self, filepath):
+        """
+        Exporta o resultado da consulta para um arquivo JSON
+        param filepath: Caminho do arquivo JSON
+        """
+        import json
+        with open(filepath, "w") as file:
+            json.dump(list(self), file, indent=4)
+
+    def to_dict(self) -> list[dict]:
+        """
+        Retorna o resultado da consulta como uma lista de dicionários.
+        """
+        return list(self)
 
 
 class DatabaseOperations:
@@ -89,7 +152,7 @@ class DatabaseOperations:
         if not query.strip().upper().startswith(expected_type):
             raise InvalidQueryError(f"Expected a {expected_type} query.")
 
-    def _execute_query(self, query, *params, commit=False):
+    def _execute_query(self, query, *params, commit=False, parse_query_result=False):
         """Executa uma consulta SQL com os parâmetros fornecidos e opcionalmente comita a transação.
 
         Args:
@@ -110,6 +173,9 @@ class DatabaseOperations:
                 result = cursor.fetchall() if cursor.description else None
                 if commit:
                     conn.commit()
+                if result and parse_query_result:
+                    col_names = [desc[0] for desc in cursor.description]
+                    return QueryResult(result, col_names)
                 return result
         except Exception as err:
             conn.rollback()
@@ -117,6 +183,24 @@ class DatabaseOperations:
             raise DataBaseUpdateError(f"Erro durante a consulta no banco: {err}")
         finally:
             self.db_conn.release_connection(conn)
+
+    def _export_csv(self, query, filepath):
+        conn = self.db_conn.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                with open(filepath, "w") as file:
+                    cursor.copy_expert(sql.SQL(query), file)
+        except Exception as err:
+            logging.error(f"Erro durante a consulta no banco: {err}")
+            raise DataBaseUpdateError(f"Erro durante a consulta no banco: {err}")
+        finally:
+            self.db_conn.release_connection(conn)
+
+    def query_to_csv(self, query: str, filepath):
+        query = f"""
+        COPY ({query}) TO STDOUT WITH DELIMITER ',' CSV HEADER;
+        """
+        self._export_csv(query, filepath)
 
     @staticmethod
     def replace_query_with_count(sql_query):
@@ -190,7 +274,12 @@ class DatabaseOperations:
         self._validate_query_type(query, "SELECT")
         return self._get_total_records(query, *query_params)
 
-    def select(self, query: str, *query_params, batch_size=None, on_fetch=None) -> Union[list, None]:
+    def select(self,
+               query: str,
+               *query_params,
+               batch_size=None,
+               on_fetch=None,
+               parse_query_result=False) -> Union[list, None]:
         """Executa uma consulta SELECT em lotes e aplica uma função de callback aos resultados.
 
         Args:
@@ -198,7 +287,7 @@ class DatabaseOperations:
             *query_params: Parâmetros para a consulta SQL.
             batch_size (int, optional): Tamanho do lote para a consulta. Se não fornecido, usa o valor padrão.
             on_fetch (callable, optional): Função de callback para processar cada lote de resultados. Se não fornecido, retorna uma lista com os resultados.
-
+            parse_query_result: Se True, o resultado da consulta será convertido em um objeto QueryResult.
         Returns:
             list or None: Lista de resultados se on_fetch não for fornecido, caso contrário, None.
         """
@@ -223,7 +312,8 @@ class DatabaseOperations:
         """
 
         with ThreadPoolExecutor(max_workers=Settings.NUM_WORKERS) as executor:
-            futures = [executor.submit(self._execute_query, query, (*query_params, batch_size, offset))
+            futures = [executor.submit(self._execute_query, query, (*query_params, batch_size, offset),
+                                       parse_query_result=parse_query_result)
                        for offset in range(0, total_records, batch_size)]
 
             total_finished = 0

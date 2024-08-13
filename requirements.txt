@@ -1,2 +1,3 @@
 psycopg2-binary
 cereja
+boto3==1.34.122
