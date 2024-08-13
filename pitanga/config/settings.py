@@ -1,7 +1,14 @@
 import os
 
+
 class Settings:
     # Database
+    AWS_DEFAULT_REGION = os.getenv("AWS_DEFAULT_REGION")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    ENVIRONMENT = os.getenv("ENVIRONMENT")
+    SQS_REGION_NAME = os.getenv("SQS_REGION_NAME")
+    SQS_ENDPOINT_URL = os.getenv("SQS_ENDPOINT_URL")
     POSTGRES_DB = os.getenv("POSTGRES_DB")
     POSTGRES_USER = os.getenv("POSTGRES_USER")
     POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
